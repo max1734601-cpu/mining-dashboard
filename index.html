@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MiningHub</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui;background:#0d1117;color:#e6edf3;padding:30px}
+h1{font-size:24px;margin-bottom:25px}
+h1 span{color:#3fb950}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:30px}
+.stat{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px}
+.stat-label{font-size:12px;color:#8b949e}
+.stat-value{font-size:24px;font-weight:600;color:#3fb950}
+.miners{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px}
+.miner{display:flex;align-items:center;gap:15px;padding:15px;background:#0d1117;border:1px solid #30363d;border-radius:8px;margin-top:10px}
+.dot{width:12px;height:12px;border-radius:50%;background:#484f58}
+.dot.on{background:#3fb950;box-shadow:0 0 10px #3fb950}
+.info{flex:1}
+.name{font-weight:500}
+.sub{font-size:12px;color:#8b949e}
+.hr{font-size:18px;font-weight:600;color:#3fb950}
+.empty{text-align:center;padding:40px;color:#8b949e}
+</style>
+</head>
+<body>
+<h1>⛏️ Mining<span>Hub</span></h1>
+<div class="stats">
+<div class="stat"><div class="stat-label">ACTIVE</div><div class="stat-value" id="s-active">0</div></div>
+<div class="stat"><div class="stat-label">HASHRATE</div><div class="stat-value" id="s-hr">0 H/s</div></div>
+</div>
+<div class="miners">
+<b>Miners</b>
+<div id="list"><div class="empty">No miners yet - plug in your Ducky!</div></div>
+</div>
+<script>
+async function load(){
+try{
+const r=await fetch('https://raw.githubusercontent.com/max1734601-cpu/mining-dashboard/main/miners.json?t='+Date.now());
+if(!r.ok)return;
+const m=await r.json();
+const list=Object.entries(m);
+if(!list.length){document.getElementById('list').innerHTML='<div class="empty">No miners yet</div>';return}
+let active=0,hr=0;
+document.getElementById('list').innerHTML=list.map(([id,d])=>{
+const on=(Date.now()-d.lastSeen)<120000&&d.mining;
+if(on){active++;hr+=d.hashrate||0}
+return'<div class="miner"><div class="dot '+(on?'on':'')+'"></div><div class="info"><div class="name">'+d.name+'</div><div class="sub">'+d.ip+' • '+(on?'Mining':'Offline')+'</div></div><div class="hr">'+(on?(d.hashrate||0)+' H/s':'—')+'</div></div>';
+}).join('');
+document.getElementById('s-active').textContent=active;
+document.getElementById('s-hr').textContent=hr>=1000?(hr/1000).toFixed(1)+' KH/s':hr+' H/s';
+}catch(e){console.log(e)}
+}
+load();setInterval(load,30000);
+</script>
+</body>
+</html>
