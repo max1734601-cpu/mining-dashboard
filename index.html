@@ -32,7 +32,7 @@ h1 span{color:#3fb950}
 <script>
 async function load(){
 try{
-const r=await fetch('https://raw.githubusercontent.com/max1734601-cpu/mining-dashboard/main/miners.json?t='+Date.now());
+const r=await fetch('https://raw.githubusercontent.com/max1734601-cpu/mining-dashboard/main/miners.json?'+Date.now());
 const miners=await r.json();
 const list=Object.entries(miners);
 if(!list.length){document.getElementById('list').innerHTML='<div class="empty">No miners</div>';return}
